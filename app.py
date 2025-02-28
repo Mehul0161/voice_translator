@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template
 from deep_translator import GoogleTranslator
 from gtts import gTTS
 import os
@@ -7,6 +7,8 @@ import base64
 import speech_recognition as sr
 from werkzeug.utils import secure_filename
 import logging
+import json
+from datetime import datetime
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
@@ -16,6 +18,7 @@ UPLOAD_FOLDER = '/tmp/audio_uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Define language codes
 LANGUAGE_CODES = {
@@ -36,6 +39,12 @@ LANGUAGE_CODES = {
     "Punjabi": "pa"
 }
 
+def get_temp_filepath(prefix='audio_', suffix='.wav'):
+    """Generate a temporary file path."""
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"{prefix}{timestamp}{suffix}"
+    return os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route('/')
 def index():
     return render_template('index.html', languages=LANGUAGE_CODES.keys())
@@ -49,6 +58,12 @@ def translate():
         from_lang = LANGUAGE_CODES[data.get('from_lang')]
         to_lang = LANGUAGE_CODES[data.get('to_lang')]
 
+        if not text:
+            return jsonify({
+                'success': False,
+                'error': 'No text provided for translation'
+            }), 400
+
         app.logger.info(f"Translating from {from_lang} to {to_lang}: {text}")
 
         # Translate text
@@ -61,8 +76,7 @@ def translate():
         tts = gTTS(text=translated_text, lang=to_lang)
         
         # Save audio to temporary file and convert to base64
-        temp_dir = tempfile.mkdtemp()
-        temp_path = os.path.join(temp_dir, 'output.mp3')
+        temp_path = get_temp_filepath(prefix='tts_', suffix='.mp3')
         
         try:
             tts.save(temp_path)
@@ -72,8 +86,6 @@ def translate():
             # Clean up
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-            if os.path.exists(temp_dir):
-                os.rmdir(temp_dir)
 
         return jsonify({
             'success': True,
@@ -106,12 +118,9 @@ def speech_to_text():
                 'error': 'Empty audio file'
             }), 400
 
-        # Create a temporary directory
-        temp_dir = tempfile.mkdtemp()
-        temp_path = os.path.join(temp_dir, secure_filename('input.wav'))
-        
+        # Save the uploaded file
+        temp_path = get_temp_filepath()
         try:
-            # Save the uploaded file
             audio_file.save(temp_path)
             
             # Initialize recognizer
@@ -131,8 +140,6 @@ def speech_to_text():
             # Clean up
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-            if os.path.exists(temp_dir):
-                os.rmdir(temp_dir)
         
     except sr.UnknownValueError:
         return jsonify({

@@ -5,5 +5,4 @@ SpeechRecognition==3.8.1
 gtts==2.2.3
 deep-translator==1.9.1
 requests==2.26.0
-Werkzeug==2.0.1
-numpy==1.21.0 
+Werkzeug==2.0.1 

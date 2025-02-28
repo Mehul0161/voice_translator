@@ -3,9 +3,15 @@ services:
     name: linguasync
     env: python
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
       - key: FLASK_ENV
-        value: production 
+        value: production
+      - key: PIP_NO_CACHE_DIR
+        value: "true"
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1 

@@ -12,7 +12,7 @@ app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
 
 # Configure upload folder
-UPLOAD_FOLDER = 'temp_uploads'
+UPLOAD_FOLDER = '/tmp/audio_uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -61,11 +61,19 @@ def translate():
         tts = gTTS(text=translated_text, lang=to_lang)
         
         # Save audio to temporary file and convert to base64
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
-            tts.save(fp.name)
-            with open(fp.name, 'rb') as audio_file:
+        temp_dir = tempfile.mkdtemp()
+        temp_path = os.path.join(temp_dir, 'output.mp3')
+        
+        try:
+            tts.save(temp_path)
+            with open(temp_path, 'rb') as audio_file:
                 audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
-            os.unlink(fp.name)
+        finally:
+            # Clean up
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
 
         return jsonify({
             'success': True,
@@ -92,28 +100,50 @@ def speech_to_text():
             }), 400
 
         audio_file = request.files['audio']
-        filename = secure_filename(audio_file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not audio_file:
+            return jsonify({
+                'success': False,
+                'error': 'Empty audio file'
+            }), 400
+
+        # Create a temporary directory
+        temp_dir = tempfile.mkdtemp()
+        temp_path = os.path.join(temp_dir, secure_filename('input.wav'))
         
-        # Save the uploaded file
-        audio_file.save(filepath)
-        
-        # Initialize recognizer
-        recognizer = sr.Recognizer()
-        
-        # Process the audio file
-        with sr.AudioFile(filepath) as source:
-            audio_data = recognizer.record(source)
-            text = recognizer.recognize_google(audio_data)
+        try:
+            # Save the uploaded file
+            audio_file.save(temp_path)
             
-        # Clean up the temporary file
-        os.remove(filepath)
+            # Initialize recognizer
+            recognizer = sr.Recognizer()
             
+            # Process the audio file
+            with sr.AudioFile(temp_path) as source:
+                audio_data = recognizer.record(source)
+                text = recognizer.recognize_google(audio_data)
+                
+            return jsonify({
+                'success': True,
+                'text': text
+            })
+            
+        finally:
+            # Clean up
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+        
+    except sr.UnknownValueError:
         return jsonify({
-            'success': True,
-            'text': text
-        })
-        
+            'success': False,
+            'error': 'Could not understand audio'
+        }), 400
+    except sr.RequestError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error with the speech recognition service: {str(e)}'
+        }), 500
     except Exception as e:
         app.logger.error(f"Speech-to-text error: {str(e)}")
         return jsonify({

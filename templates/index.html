@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinguaSync - Real-Time Voice Translator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Custom styles to ensure consistency */
+        .bg-custom-dark { background-color: #1E1E1E; }
+        .bg-custom-secondary { background-color: #2D2D2D; }
+        .text-custom-accent { color: #007AFF; }
+        .bg-custom-accent { background-color: #007AFF; }
+        .hover\:bg-custom-accent-dark:hover { background-color: #0051FF; }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .grid-cols-2 { grid-template-columns: 1fr; }
+            .w-5\/12 { width: 100%; }
+        }
+        
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Audio meter styles */
+        .audio-meter {
+            width: 100%;
+            height: 6px;
+            background-color: #404040;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .audio-meter-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #34C759, #007AFF);
+            width: 0%;
+            transition: width 0.1s ease-out;
+        }
+
+        /* Swap button */
+        .swap-button {
+            padding: 8px 12px;
+            background-color: #404040;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+        }
+
+        .swap-button:hover {
+            background-color: #505050;
+            transform: rotate(180deg);
+        }
+
+        /* Auto-detect badge */
+        .badge-auto {
+            display: inline-block;
+            background-color: #34C759;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body class="bg-custom-dark text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-custom-accent mb-2">LinguaSync</h1>
+            <p class="text-gray-400">Real-Time Voice Translation</p>
+        </header>
+
+        <div class="bg-custom-secondary rounded-lg p-6 max-w-4xl mx-auto shadow-lg">
+            <!-- Language Selection with Swap Button -->
+            <div class="flex flex-col md:flex-row justify-between items-end mb-8 space-y-4 md:space-y-0">
+                <div class="w-full md:w-5/12">
+                    <label class="block text-gray-400 mb-2">From <span class="badge-auto" id="autoBadge" style="display: none;">Auto</span></label>
+                    <select id="fromLang" class="w-full bg-gray-700 rounded p-2 text-white focus:outline-none focus:ring-2 focus:ring-custom-accent">
+                        <option value="auto">🌐 Auto-Detect</option>
+                        {% for language in languages %}
+                        <option value="{{ language }}">{{ language }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Swap Button -->
+                <div class="flex justify-center w-full md:w-auto md:mb-0">
+                    <button id="swapLangs" class="swap-button" title="Swap languages">⇄</button>
+                </div>
+
+                <div class="w-full md:w-5/12">
+                    <label class="block text-gray-400 mb-2">To</label>
+                    <select id="toLang" class="w-full bg-gray-700 rounded p-2 text-white focus:outline-none focus:ring-2 focus:ring-custom-accent">
+                        {% for language in languages %}
+                        <option value="{{ language }}" {% if language == "Hindi" %}selected{% endif %}>{{ language }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Text Areas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-gray-400 mb-2">Original Text</label>
+                    <textarea id="inputText" class="w-full h-40 bg-gray-700 rounded p-3 text-white resize-none focus:outline-none focus:ring-2 focus:ring-custom-accent" placeholder="Type or speak your text here..."></textarea>
+                    <div class="audio-meter" id="audioMeter" style="display: none;">
+                        <div class="audio-meter-bar" id="audioMeterBar"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Translated Text</label>
+                    <textarea id="outputText" class="w-full h-40 bg-gray-700 rounded p-3 text-white resize-none focus:outline-none focus:ring-2 focus:ring-custom-accent" readonly></textarea>
+                    <div class="text-xs text-gray-500 mt-2" id="translationTime" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mt-8">
+                <button id="startRecording" class="bg-custom-accent hover:bg-custom-accent-dark text-white px-6 py-2 rounded-lg flex items-center justify-center transition">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                    Start Recording
+                </button>
+                <button id="stopRecording" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg hidden flex items-center justify-center transition">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 4h12v12H6z"></path>
+                    </svg>
+                    Stop Recording
+                </button>
+                <button id="translate" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg flex items-center justify-center transition">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21h6a2 2 0 002-2V9a2 2 0 00-2-2h-6a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                    Translate
+                </button>
+            </div>
+
+            <!-- Status Indicator -->
+            <div id="status" class="mt-4 text-center text-gray-400 hidden">
+                <span class="loading mr-2"></span>
+                <span id="statusText">Processing...</span>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="mt-4 p-3 bg-red-900 border border-red-700 rounded text-red-200 hidden">
+                <span id="errorText"></span>
+            </div>
+
+            <!-- Recording Info -->
+            <div id="recordingInfo" class="mt-4 text-center text-gray-500 text-sm hidden">
+                Recording... <span id="recordingTime">0s</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStartTime = null;
+        let recordingInterval = null;
+        let audioContext;
+        let analyser;
+        let dataArray;
+
+        const status = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const recordingInfo = document.getElementById('recordingInfo');
+        const recordingTime = document.getElementById('recordingTime');
+
+        function showStatus(message) {
+            statusText.textContent = message;
+            status.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            status.classList.add('hidden');
+        }
+
+        function showError(error) {
+            console.error('Error:', error);
+            errorText.textContent = error;
+            errorMessage.classList.remove('hidden');
+            setTimeout(() => errorMessage.classList.add('hidden'), 5000);
+            hideStatus();
+        }
+
+        function handleError(error) {
+            showError(error.message || String(error));
+        }
+
+        // Swap Languages Button
+        document.getElementById('swapLangs').addEventListener('click', () => {
+            const fromLang = document.getElementById('fromLang');
+            const toLang = document.getElementById('toLang');
+            
+            if (fromLang.value !== 'auto') {
+                [fromLang.value, toLang.value] = [toLang.value, fromLang.value];
+            }
+        });
+
+        // Update auto badge visibility
+        document.getElementById('fromLang').addEventListener('change', () => {
+            const autoBadge = document.getElementById('autoBadge');
+            if (document.getElementById('fromLang').value === 'auto') {
+                autoBadge.style.display = 'inline-block';
+            } else {
+                autoBadge.style.display = 'none';
+            }
+        });
+
+        // Detect supported audio format
+        function getSupportedMimeType() {
+            const types = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/ogg;codecs=opus',
+                'audio/ogg',
+                'audio/mp4'
+            ];
+            return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+        }
+
+        // Initialize audio context for visualizing recording levels
+        function initAudioContext(stream) {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            updateAudioMeter();
+        }
+
+        function updateAudioMeter() {
+            if (!analyser) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            const level = (average / 255) * 100;
+            
+            document.getElementById('audioMeterBar').style.width = level + '%';
+            
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                requestAnimationFrame(updateAudioMeter);
+            }
+        }
+
+        // Start Recording
+        document.getElementById('startRecording').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mimeType = getSupportedMimeType();
+                
+                const options = mimeType ? { mimeType } : {};
+                mediaRecorder = new MediaRecorder(stream, options);
+                audioChunks = [];
+                recordingStartTime = Date.now();
+
+                // Show audio meter
+                document.getElementById('audioMeter').style.display = 'block';
+                document.getElementById('recordingInfo').classList.remove('hidden');
+                
+                // Update recording time
+                recordingInterval = setInterval(() => {
+                    const seconds = Math.floor((Date.now() - recordingStartTime) / 1000);
+                    recordingTime.textContent = seconds + 's';
+                }, 100);
+
+                initAudioContext(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    clearInterval(recordingInterval);
+                    document.getElementById('audioMeter').style.display = 'none';
+                    document.getElementById('recordingInfo').classList.add('hidden');
+                    
+                    showStatus('Processing speech...');
+                    
+                    // Detect MIME type for blob
+                    const mimeType = getSupportedMimeType() || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const formData = new FormData();
+                    
+                    // Generate appropriate filename
+                    const filename = 'recording.' + (mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'wav');
+                    formData.append('audio', audioBlob, filename);
+
+                    try {
+                        const response = await fetch('/speech-to-text', {
+                            method: 'POST',
+                            body: formData,
+                            timeout: 30000
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Server error: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            document.getElementById('inputText').value = data.text;
+                            hideStatus();
+                        } else {
+                            throw new Error(data.error || 'Speech recognition failed');
+                        }
+                    } catch (error) {
+                        handleError(error);
+                    }
+                    
+                    // Stop audio context
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                document.getElementById('startRecording').classList.add('hidden');
+                document.getElementById('stopRecording').classList.remove('hidden');
+            } catch (error) {
+                handleError(error);
+            }
+        });
+
+        // Stop Recording
+        document.getElementById('stopRecording').addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                document.getElementById('startRecording').classList.remove('hidden');
+                document.getElementById('stopRecording').classList.add('hidden');
+            }
+        });
+
+        // Translate Text
+        document.getElementById('translate').addEventListener('click', async () => {
+            const text = document.getElementById('inputText').value.trim();
+            if (!text) {
+                showError('Please enter or speak some text to translate.');
+                return;
+            }
+
+            if (text.length > 5000) {
+                showError('Text is too long (max 5000 characters). Please shorten it.');
+                return;
+            }
+
+            showStatus('Translating...');
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text,
+                        from_lang: document.getElementById('fromLang').value,
+                        to_lang: document.getElementById('toLang').value
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('outputText').value = data.translated_text;
+                    
+                    // Show translation time
+                    const duration = (Date.now() - startTime) / 1000;
+                    document.getElementById('translationTime').textContent = `Translated in ${duration.toFixed(2)}s`;
+                    document.getElementById('translationTime').style.display = 'block';
+                    
+                    // Play the translated audio
+                    try {
+                        const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                        audio.play().catch(e => console.warn('Audio playback failed:', e));
+                    } catch (e) {
+                        console.warn('Audio generation failed:', e);
+                    }
+                    
+                    hideStatus();
+                } else {
+                    throw new Error(data.error || 'Translation failed');
+                }
+            } catch (error) {
+                handleError(error);
+            }
+        });
+    </script>
+</body>
+</html>
+

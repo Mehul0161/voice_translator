@@ -1,0 +1,9 @@
+# Desktop Application Requirements
+customtkinter==5.2.0
+pyttsx3==2.90
+playsound==1.2.2
+SpeechRecognition==3.10.0
+gtts==2.4.0
+deep-translator==1.11.4
+requests==2.31.0
+

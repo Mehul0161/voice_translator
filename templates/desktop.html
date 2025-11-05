@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinguaSync Desktop</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .bg-custom-dark { background-color: #1E1E1E; }
+        .bg-custom-secondary { background-color: #2D2D2D; }
+        .bg-custom-accent { background-color: #007AFF; }
+        .hover\:bg-custom-accent-dark:hover { background-color: #0051FF; }
+    </style>
+</head>
+<body class="bg-custom-dark text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <header class="mb-8">
+            <a href="/" class="text-gray-400 hover:text-white">← Back to Web App</a>
+            <h1 class="text-4xl font-bold text-center mt-4">LinguaSync Desktop</h1>
+            <p class="text-center text-gray-400 mt-2">The full-featured desktop experience</p>
+        </header>
+
+        <div class="bg-custom-secondary rounded-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4">Download</h2>
+            <p class="text-gray-300 mb-4">Get the Windows desktop app for the best experience with continuous voice mode, theme settings, and voice customization.</p>
+
+            <!-- Replace the href with your actual release link when available -->
+            <a href="#" class="inline-block bg-custom-accent hover:bg-custom-accent-dark text-white px-5 py-3 rounded-lg">
+                Download for Windows (EXE)
+            </a>
+            <p class="text-xs text-gray-400 mt-2">No download yet? Follow the build steps below.</p>
+        </div>
+
+        <div class="bg-custom-secondary rounded-lg p-6 mt-6">
+            <h2 class="text-2xl font-semibold mb-4">Build Locally (Windows)</h2>
+            <ol class="list-decimal list-inside space-y-2 text-gray-200">
+                <li>Install Python 3.11 (recommended) and Git.</li>
+                <li>Open PowerShell and run:
+                    <pre class="bg-gray-800 p-3 rounded mt-2 text-sm overflow-x-auto"><code>git clone https://github.com/Mehul0161/voice_translator
+cd voice_translator/desktop
+python -m venv venv
+venv\Scripts\Activate.ps1
+pip install -r requirements-desktop.txt
+pip install pyinstaller
+pyinstaller --noconsole --onefile main.py</code></pre>
+                </li>
+                <li>Find the EXE in <code>dist/main.exe</code>. Rename to <code>LinguaSync.exe</code> and share.</li>
+            </ol>
+        </div>
+
+        <div class="bg-custom-secondary rounded-lg p-6 mt-6">
+            <h2 class="text-2xl font-semibold mb-4">Troubleshooting</h2>
+            <ul class="list-disc list-inside space-y-2 text-gray-200">
+                <li>If audio doesn’t play, ensure speakers aren’t muted.</li>
+                <li>If microphone isn’t detected, check Windows privacy settings.</li>
+                <li>Install ffmpeg if needed for gTTS playback issues.</li>
+            </ul>
+        </div>
+
+        <footer class="text-center text-gray-500 mt-8">
+            <p>© LinguaSync</p>
+        </footer>
+    </div>
+</body>
+</html>

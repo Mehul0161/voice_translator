@@ -129,6 +129,11 @@ def index():
     """Serve the main page."""
     return render_template('index.html', languages=LANGUAGE_CODES.keys())
 
+@app.route('/desktop')
+def desktop_download():
+    """Serve the desktop download/instructions page."""
+    return render_template('desktop.html')
+
 @app.route('/translate', methods=['POST'])
 def translate():
     """Translate text from one language to another."""

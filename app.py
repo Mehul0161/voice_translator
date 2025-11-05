@@ -12,6 +12,7 @@ from datetime import datetime
 from functools import lru_cache
 import time
 from pydub import AudioSegment
+import imageio_ffmpeg
 import io
 
 app = Flask(__name__, template_folder='templates')
@@ -22,6 +23,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+# Configure pydub to use bundled ffmpeg (via imageio-ffmpeg)
+try:
+    ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+    AudioSegment.converter = ffmpeg_path
+except Exception as e:
+    # Log and proceed; conversion will be skipped if not available
+    logging.warning(f"FFmpeg binary not found via imageio-ffmpeg: {e}")
 
 # Configure upload folder
 UPLOAD_FOLDER = '/tmp/audio_uploads'

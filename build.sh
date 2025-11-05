@@ -3,8 +3,7 @@
 set -o errexit
 
 echo "Installing system dependencies..."
-apt-get update
-apt-get install -y python3-dev build-essential ffmpeg
+# Skipping apt operations on Render (read-only filesystem during build)
 
 echo "Upgrading pip and installing wheel..."
 python -m pip install --upgrade pip

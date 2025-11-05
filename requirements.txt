@@ -8,3 +8,4 @@ requests==2.31.0
 Werkzeug==2.3.7
 pydub==0.25.1
 cachetools==5.3.1
+imageio-ffmpeg==0.5.1
